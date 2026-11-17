@@ -1,0 +1,63 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        id: godot
+        uses: firebelley/godot-export@v6.0.0
+        with:
+          godot_version: 4.3
+          templates_version: 4.3
+          relative_project_path: ./
+          archive_output: true
+
+      - name: Export Windows
+        run: |
+          # Godot 4 export command
+          godot --headless --path ./ --export-release "Windows Desktop" ./build/CareerMode.exe
+
+      - name: Upload Windows Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: CareerMode-Windows
+          path: build/CareerMode.exe
+          retention-days: 30
+
+  # Also build a zip with the executable and required DLLs
+  package:
+    name: Package Release
+    runs-on: windows-latest
+    needs: build
+    steps:
+      - name: Download Build
+        uses: actions/download-artifact@v4
+        with:
+          name: CareerMode-Windows
+          path: build
+
+      - name: Create Release Zip
+        run: |
+          Compress-Archive -Path build/CareerMode.exe -DestinationPath CareerMode-Windows.zip
+
+      - name: Upload Release Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CareerMode-Windows-Zip
+          path: CareerMode-Windows.zip
+          retention-days: 30
